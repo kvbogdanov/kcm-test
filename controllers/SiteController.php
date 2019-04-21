@@ -9,6 +9,9 @@ use yii\web\Response;
 use app\models\Links;
 use app\models\History;
 
+use yii\data\ActiveDataProvider;
+
+
 class SiteController extends Controller
 {
     /**
@@ -101,6 +104,31 @@ class SiteController extends Controller
         $history->save();
 
         return Yii::$app->response->redirect($item->url);
+    }
+
+    /**
+     * Shows redirect history for particular URL.
+     *
+     * @param short URL
+     *
+     * @return string
+     */
+    public function actionHistory($link)
+    {
+        $item = Links::find()->where(['link' => $link ])->one();
+
+        if(!$item)
+            return $this->redirect('/');
+
+        $dataProvider = new ActiveDataProvider([
+            'query' => $item->getRedirects(),
+        ]);
+
+        return $this->render('history', [
+            'dataProvider' => $dataProvider,
+            'link' => $item
+        ]);
+
     }
 
 }

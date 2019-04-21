@@ -56,4 +56,9 @@ class Links extends \yii\db\ActiveRecord
             'date_delete' => \Yii::t('app','Date Delete'),
         ];
     }
+
+    public function getRedirects()
+    {
+        return $this->hasMany(History::className(), ['id_link' => 'id_link'])->orderBy('date DESC');
+    }
 }

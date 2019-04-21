@@ -49,6 +49,7 @@ $config = [
             'showScriptName' => false,
             'rules' => [
                 '/' => '/site/index',
+                '/history/<link>' => '/site/history',
                 '<link>' => '/site/redirect'
             ],
         ],
