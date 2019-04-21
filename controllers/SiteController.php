@@ -3,12 +3,11 @@
 namespace app\controllers;
 
 use Yii;
-use yii\filters\AccessControl;
 use yii\web\Controller;
 use yii\web\Response;
-use yii\filters\VerbFilter;
-use app\models\LoginForm;
-use app\models\ContactForm;
+
+use app\models\Links;
+use app\models\History;
 
 class SiteController extends Controller
 {
@@ -17,25 +16,7 @@ class SiteController extends Controller
      */
     public function behaviors()
     {
-        return [
-            'access' => [
-                'class' => AccessControl::className(),
-                'only' => ['logout'],
-                'rules' => [
-                    [
-                        'actions' => ['logout'],
-                        'allow' => true,
-                        'roles' => ['@'],
-                    ],
-                ],
-            ],
-            'verbs' => [
-                'class' => VerbFilter::className(),
-                'actions' => [
-                    'logout' => ['post'],
-                ],
-            ],
-        ];
+        return [];
     }
 
     /**
@@ -47,12 +28,28 @@ class SiteController extends Controller
             'error' => [
                 'class' => 'yii\web\ErrorAction',
             ],
-            'captcha' => [
-                'class' => 'yii\captcha\CaptchaAction',
-                'fixedVerifyCode' => YII_ENV_TEST ? 'testme' : null,
-            ],
         ];
     }
+
+    /**
+     * Generates shortlink part.
+     *
+     * @param number of symbols
+     *
+     * @return string
+     */
+    protected function getRandomLink($n) {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $randomString = '';
+
+        for ($i = 0; $i < $n; $i++) {
+            $index = rand(0, strlen($characters) - 1);
+            $randomString .= $characters[$index];
+        }
+
+        return $randomString;
+    }
+
 
     /**
      * Displays homepage.
@@ -61,68 +58,49 @@ class SiteController extends Controller
      */
     public function actionIndex()
     {
-        return $this->render('index');
-    }
+        $model = new Links;
 
-    /**
-     * Login action.
-     *
-     * @return Response|string
-     */
-    public function actionLogin()
-    {
-        if (!Yii::$app->user->isGuest) {
-            return $this->goHome();
+        if ($model->load(Yii::$app->request->post())) {
+
+            if (empty($model->link))
+                $model->link = $this->getRandomLink(10);
+
+            $model->date_create = time();
+            $model->creator_ip = ip2long(Yii::$app->request->userIP);
+
+            if ($model->save())
+                return $this->render('result', [
+                    'model' => $model,
+                ]);
         }
 
-        $model = new LoginForm();
-        if ($model->load(Yii::$app->request->post()) && $model->login()) {
-            return $this->goBack();
-        }
-
-        $model->password = '';
-        return $this->render('login', [
+        return $this->render('index', [
             'model' => $model,
         ]);
+
     }
 
     /**
-     * Logout action.
+     * Redirects to the URL.
      *
-     * @return Response
-     */
-    public function actionLogout()
-    {
-        Yii::$app->user->logout();
-
-        return $this->goHome();
-    }
-
-    /**
-     * Displays contact page.
-     *
-     * @return Response|string
-     */
-    public function actionContact()
-    {
-        $model = new ContactForm();
-        if ($model->load(Yii::$app->request->post()) && $model->contact(Yii::$app->params['adminEmail'])) {
-            Yii::$app->session->setFlash('contactFormSubmitted');
-
-            return $this->refresh();
-        }
-        return $this->render('contact', [
-            'model' => $model,
-        ]);
-    }
-
-    /**
-     * Displays about page.
+     * @param short URL
      *
      * @return string
      */
-    public function actionAbout()
+    public function actionRedirect($link)
     {
-        return $this->render('about');
+        $item = Links::find()->where(['link' => $link ])->andWhere('date_delete IS NULL OR date_delete>'.time())->one();
+
+        if(!$item)
+            return $this->redirect('/');
+
+        $history = new History();
+        $history->id_link = $item->id_link;
+        $history->date = time();
+        $history->ip = ip2long(Yii::$app->request->userIP);
+        $history->save();
+
+        return Yii::$app->response->redirect($item->url);
     }
+
 }
