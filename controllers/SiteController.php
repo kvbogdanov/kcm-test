@@ -188,7 +188,7 @@ class SiteController extends Controller
                     HAVING cnt>0
                     ";
 
-        $count = Yii::$app->db->createCommand($sql)->queryScalar();
+        $count = Yii::$app->db->createCommand('SELECT COUNT(*) FROM ('.$sql.') t1')->queryScalar();
 
         $dataProvider = new SqlDataProvider([
             'sql' => $sql,
