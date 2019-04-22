@@ -5,11 +5,13 @@ namespace app\controllers;
 use Yii;
 use yii\web\Controller;
 use yii\web\Response;
+use yii\helpers\FileHelper;
 
 use app\models\Links;
 use app\models\History;
 
 use yii\data\ActiveDataProvider;
+use yii\data\SqlDataProvider;
 
 
 class SiteController extends Controller
@@ -94,16 +96,52 @@ class SiteController extends Controller
     {
         $item = Links::find()->where(['link' => $link ])->andWhere('date_delete IS NULL OR date_delete>'.time())->one();
 
+        // if no matched links -> to main page
         if(!$item)
             return $this->redirect('/');
 
+        // save redirect event info
         $history = new History();
         $history->id_link = $item->id_link;
         $history->date = time();
         $history->ip = ip2long(Yii::$app->request->userIP);
         $history->save();
 
-        return Yii::$app->response->redirect($item->url);
+        // if not comercial -> redirect immediately
+        if(!$item->commercial)
+            return Yii::$app->response->redirect($item->url);
+
+        // otherwise -> show page with adv image (if exists) with delay
+        $advPath = Yii::getAlias('@webroot').Yii::$app->params['advSrc'];
+
+        // if no dir with images - go to url
+        if(!file_exists($advPath))
+            return Yii::$app->response->redirect($item->url);
+
+        $images = FileHelper::findFiles(Yii::getAlias('@webroot').Yii::$app->params['advSrc'],['only'=>['*.jpeg','*.jpg','*.png','*.gif']]);
+
+        // if no images in path - go to url
+        if(!$images)
+            return Yii::$app->response->redirect($item->url);
+
+        shuffle($images);
+
+        $meta = [
+            'http-equiv' => 'Refresh',
+            'content' => Yii::$app->params['advDelay'].'; url=' . $item->url,
+        ];
+        Yii::$app->view->registerMetaTag($meta);
+
+        // save fact of showing
+        $imgToShow = str_replace(Yii::getAlias('@webroot'),'',$images[0]);
+        $history->image = $imgToShow;
+        $history->update();
+
+        $this->layout = 'empty';
+
+        return $this->render('advert', [
+            'imagePath' => $imgToShow
+        ]);
     }
 
     /**
@@ -122,6 +160,9 @@ class SiteController extends Controller
 
         $dataProvider = new ActiveDataProvider([
             'query' => $item->getRedirects(),
+            'pagination' => [
+                'pageSize' => 10,
+            ]
         ]);
 
         return $this->render('history', [
@@ -130,5 +171,43 @@ class SiteController extends Controller
         ]);
 
     }
+
+    /**
+     * Shows stat.
+     *
+     * @return string
+     *
+     * @throws
+     */
+    public function actionStat()
+    {
+        $sql = "SELECT cl.url, cl.link, COUNT(cl.id_link) as cnt FROM cnt_history ch
+                    LEFT JOIN cnt_links cl ON cl.id_link = ch.id_link
+                    WHERE ch.date>DATE_SUB(curdate(), INTERVAL 2 WEEK)
+                    GROUP BY ch.id_link
+                    HAVING cnt>0
+                    ";
+
+        $count = Yii::$app->db->createCommand($sql)->queryScalar();
+
+        $dataProvider = new SqlDataProvider([
+            'sql' => $sql,
+            'totalCount' => $count,
+            'sort' => [
+                'attributes' => [
+                    'cnt',
+                ],
+            ],
+            'pagination' => [
+                'pageSize' => 20,
+            ],
+        ]);
+
+        return $this->render('stat', [
+            'dataProvider' => $dataProvider,
+        ]);
+
+    }
+
 
 }

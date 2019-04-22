@@ -50,6 +50,7 @@ $config = [
             'rules' => [
                 '/' => '/site/index',
                 '/history/<link>' => '/site/history',
+                '/stat' => '/site/stat',
                 '<link>' => '/site/redirect'
             ],
         ],

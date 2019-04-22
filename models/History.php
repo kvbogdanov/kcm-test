@@ -29,6 +29,7 @@ class History extends \yii\db\ActiveRecord
     {
         return [
             [['id_link', 'ip', 'date'], 'integer'],
+            [['image'], 'string', 'max' => 500],
         ];
     }
 

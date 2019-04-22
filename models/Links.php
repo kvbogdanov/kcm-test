@@ -33,7 +33,7 @@ class Links extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['creator_ip', 'date_create', 'date_delete'], 'integer'],
+            [['creator_ip', 'date_create', 'date_delete', 'commercial'], 'integer'],
             ['url', 'required'],
             [['url', 'link'], 'string', 'max' => 255],
             [['date_to'], 'date', 'format' => 'yyyy-MM-dd', 'timestampAttribute' => 'date_delete'],
@@ -54,6 +54,7 @@ class Links extends \yii\db\ActiveRecord
             'link' => \Yii::t('app', 'Link'),
             'date_create' => \Yii::t('app','Date Create'),
             'date_delete' => \Yii::t('app','Date Delete'),
+            'commercial' => \Yii::t('app', 'Commercial')
         ];
     }
 

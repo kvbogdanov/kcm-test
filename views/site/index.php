@@ -22,6 +22,8 @@ $this->title = \Yii::t('app','Url Shortener');
 
         echo $form->field($model, 'date_to')->input('date');
 
+        echo $form->field($model, 'commercial')->checkbox();
+
         echo Html::submitButton(Yii::t('app', 'Create'), ['class' => 'btn btn-primary pull-right']) ;
 
         ActiveForm::end();
